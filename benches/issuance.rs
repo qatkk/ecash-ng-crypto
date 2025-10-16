@@ -1,8 +1,10 @@
+use std::io::Write;
+
 use bitcoin_hashes::sha256;
 use bls12_381::Scalar;
 use ecash_ng_crypto::IssuanceRequest;
 use ff::Field;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 
 fn main() {
     divan::main();
@@ -47,4 +49,37 @@ fn bulletproofs_verify(bencher: divan::Bencher) {
     let commitment = ecash_ng_crypto::pedersen_commit(1000, blinding);
 
     bencher.bench(|| ecash_ng_crypto::rp::verify(commitment, &proof));
+}
+
+fn find_tag_single_bit(seed: [u8; 32]) -> [u8; 16] {
+    loop {
+        let tag = thread_rng().gen::<[u8; 16]>();
+
+        if is_even(seed, tag) {
+            return tag;
+        }
+    }
+}
+
+fn is_even(seed: [u8; 32], tag: [u8; 16]) -> bool {
+    let mut engine = sha256::HashEngine::default();
+
+    engine
+        .write_all(&seed)
+        .expect("Writing to hash engine can't fail");
+
+    engine
+        .write_all(&tag)
+        .expect("Writing to hash engine can't fail");
+
+    let hash = sha256::Hash::from_engine(engine);
+
+    hash.as_byte_array()[0] & 0x01 == 0
+}
+
+#[divan::bench]
+fn sha256_hash(bencher: divan::Bencher) {
+    let seed = [0u8; 32];
+
+    bencher.bench(|| find_tag_single_bit(seed));
 }
