@@ -283,6 +283,82 @@ single-issuer scheme and verifies against the aggregate key. Fewer than $t$ guar
 learn nothing about $\mathsf{sk}$ and cannot produce a valid share combination.
 </p>
 
+<h2>Appendix: Σ-protocols for linear homomorphisms</h2>
+<p>
+Both proofs in this scheme are instances of one generic protocol: a proof of knowledge
+of a preimage under a group homomorphism. Let
+$$\varphi : \mathbb{Z}_p^n \to \mathbb{H}, \qquad
+\varphi(a\,\vec{x} + b\,\vec{y}) = a\,\varphi(\vec{x}) + b\,\varphi(\vec{y}),$$
+be any $\mathbb{Z}_p$-linear map into a group $\mathbb{H}$ of prime order $p$ —
+$\mathbb{H}$ may itself be a product such as $\mathbb{G}_1^5$ or
+$\mathbb{G}_1 \times \mathbb{G}_2$, since a tuple of homomorphisms is again a
+homomorphism. The public statement is $Y \in \mathbb{H}$; the
+<span class="role">prover</span> knows a witness $\vec{x} \in \mathbb{Z}_p^n$ with
+$\varphi(\vec{x}) = Y$.
+</p>
+
+<h3>A.1 The interactive protocol</h3>
+<p>
+$$\begin{aligned}
+&\textbf{commit:} && \vec{\rho} \stackrel{\$}{\leftarrow} \mathbb{Z}_p^n, \quad
+  R = \varphi(\vec{\rho}), && \text{prover} \to \text{verifier:}\; R \\[2pt]
+&\textbf{challenge:} && c \stackrel{\$}{\leftarrow} \mathbb{Z}_p,
+  && \text{verifier} \to \text{prover:}\; c \\[2pt]
+&\textbf{respond:} && \vec{s} = \vec{\rho} + c\,\vec{x},
+  && \text{prover} \to \text{verifier:}\; \vec{s} \\[2pt]
+&\textbf{verify:} && \varphi(\vec{s}) \;\stackrel{?}{=}\; R + c\,Y. &&
+\end{aligned}$$
+</p>
+<p>The three defining properties follow directly from linearity:</p>
+<ul>
+  <li><strong>Completeness.</strong> For an honest prover,
+      $\varphi(\vec{s}) = \varphi(\vec{\rho}) + c\,\varphi(\vec{x}) = R + c\,Y$.</li>
+  <li><strong>Special soundness.</strong> Two accepting transcripts with the same
+      commitment but distinct challenges, $(R, c, \vec{s})$ and $(R, c', \vec{s}\,')$,
+      yield $\varphi(\vec{s} - \vec{s}\,') = (c - c')\,Y$, so
+      $$\vec{x}^\ast = (c - c')^{-1} (\vec{s} - \vec{s}\,')$$
+      is a valid witness — an extractor recovers a preimage from any prover that can
+      answer two challenges, so the proof is a proof of <em>knowledge</em>.</li>
+  <li><strong>Honest-verifier zero knowledge.</strong> A simulator without the witness
+      samples $\vec{s} \stackrel{\$}{\leftarrow} \mathbb{Z}_p^n$ and
+      $c \stackrel{\$}{\leftarrow} \mathbb{Z}_p$ first, then sets
+      $R = \varphi(\vec{s}) - c\,Y$. The resulting transcript is distributed identically
+      to a real one, so the verifier learns nothing beyond the truth of the statement.</li>
+</ul>
+
+<h3>A.2 The Fiat–Shamir transform</h3>
+<p>
+The protocol is public-coin — the verifier's only message is a random challenge — so it
+can be made non-interactive by replacing the verifier with a hash function modeled as a
+random oracle:
+$$c = \mathsf{H}_s\bigl(\mathsf{tag} \,\|\, Y \,\|\, R\bigr),$$
+where $\mathsf{tag}$ is a domain-separation string unique to the statement type. The
+proof is the pair $(R, \vec{s})$, verified by recomputing $c$ and checking
+$\varphi(\vec{s}) = R + c\,Y$. Hashing $Y$ along with $R$ binds the proof to the
+statement; the domain tag prevents a proof for one homomorphism from being replayed
+against another.
+</p>
+
+<h3>A.3 Instances used in this scheme</h3>
+<table>
+  <tr><th>Proof</th><th>Homomorphism</th><th>Domain tag</th></tr>
+  <tr>
+    <td>Issuance (§3.1)</td>
+    <td>$\varphi_h : \mathbb{Z}_p^8 \to \mathbb{G}_1^5$</td>
+    <td><code>FEDIMINT_ECASH_CHALLENGE_ISSUANCE</code></td>
+  </tr>
+  <tr>
+    <td>Spend (§4)</td>
+    <td>$\psi : \mathbb{Z}_p^3 \to \mathbb{G}_1 \times \mathbb{G}_2$</td>
+    <td><code>FEDIMINT_ECASH_CHALLENGE_SPEND</code></td>
+  </tr>
+</table>
+<p>
+Classic Schnorr identification is the simplest instance, $\varphi(x) = x\,g$; Pedersen
+opening proofs are $\varphi(m, r) = m\,G + r\,H$. The scheme's two proofs differ only in
+the choice of $\varphi$ — all security arguments are inherited from the general protocol.
+</p>
+
 <div class="box warn">
 <strong>Implementation caveat (prototype).</strong>
 Hash-to-group is implemented by seeding a ChaCha RNG with SHA-256 rather than a
