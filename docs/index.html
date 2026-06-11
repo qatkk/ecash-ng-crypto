@@ -125,8 +125,17 @@ message vector, and the guardians can recompute $h$ themselves from the public $
 <p>
 The well-formedness of $(\mathsf{pc}, c_m, c_1, c_2, c_3)$ is exactly the statement that
 this tuple lies in the image of the group homomorphism
-$$\varphi_h : \mathbb{Z}_p^8 \to \mathbb{G}_1^5, \qquad
-\varphi_h(m_1, m_2, m_3, r_p, r_m, r_1, r_2, r_3) = (\mathsf{pc},\, c_m,\, c_1,\, c_2,\, c_3),$$
+$\varphi_h : \mathbb{Z}_p^8 \to \mathbb{G}_1^5$,
+$$\varphi_h(m_1, m_2, m_3, r_p, r_m, r_1, r_2, r_3) \;=\;
+\begin{pmatrix}
+m_1\, G_p + r_p\, H_p \\[2pt]
+m_1 H_1 + m_2 H_2 + m_3 H_3 + r_m\, G \\[2pt]
+m_1\, h + r_1\, G \\[2pt]
+m_2\, h + r_2\, G \\[2pt]
+m_3\, h + r_3\, G
+\end{pmatrix}
+\;=\;
+\begin{pmatrix} \mathsf{pc} \\[2pt] c_m \\[2pt] c_1 \\[2pt] c_2 \\[2pt] c_3 \end{pmatrix},$$
 and the user proves knowledge of a preimage with a generalized Schnorr $\Sigma$-protocol,
 made non-interactive by Fiat–Shamir (domain tag <code>FEDIMINT_ECASH_CHALLENGE_ISSUANCE</code>):
 </p>
