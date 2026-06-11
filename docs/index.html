@@ -51,23 +51,46 @@ Sections 1–5 present the complete scheme with a <em>single</em> issuer.
 Section 6 then explains how the issuer is replaced by a $t$-of-$n$ federation of
 guardians — a standard transformation that exploits only the linearity of signing
 in the secret key, and applies equally to ordinary short BLS signatures.
+The appendix develops the Σ-protocol used by both proofs in the general
+setting of an arbitrary linear map.
 </p>
 
 <h2>1. Setting and notation</h2>
 <p>
-Let $\mathbb{G}_1, \mathbb{G}_2, \mathbb{G}_T$ be the BLS12-381 pairing groups of prime
-order $p$, with bilinear map $e : \mathbb{G}_1 \times \mathbb{G}_2 \to \mathbb{G}_T$ and
-fixed generators $g_1 \in \mathbb{G}_1$, $g_2 \in \mathbb{G}_2$. All other generators are
-derived by hashing domain-separation strings to the curve (nothing-up-my-sleeve):
+Throughout, $K := \mathbb{Z}/p\mathbb{Z}$ denotes the field of integers modulo the
+prime $p$, and $K^n$ the $K$-vector space of (column) vectors of length $n$.
+</p>
+<p>
+Let $\mathbb{G}_1, \mathbb{G}_2, \mathbb{G}_T$ be the BLS12-381 pairing groups, all of
+order $p$ and written additively, with fixed generators $g_1 \in \mathbb{G}_1$,
+$g_2 \in \mathbb{G}_2$, and let
+$e : \mathbb{G}_1 \times \mathbb{G}_2 \to \mathbb{G}_T$ be the pairing, a nondegenerate
+$K$-bilinear map.
+</p>
+<div class="box">
+<strong>Groups as vector spaces.</strong>
+Since $|\mathbb{G}_i| = p$ is prime, scalar multiplication
+$K \times \mathbb{G}_i \to \mathbb{G}_i$, $(\lambda, v) \mapsto \lambda\, v$ is
+well defined and makes each $\mathbb{G}_i$ a one-dimensional $K$-vector space; every
+nonzero element is a basis. Consequently the group homomorphisms appearing below are
+exactly the <em>$K$-linear maps</em> between (products of) these spaces, and the whole
+scheme can be read in the language of linear algebra — we follow the notation of
+Liesen &amp; Mehrmann, <em>Linear Algebra</em> (Springer): linear maps
+$f : V \to W$ over a field $K$, with image $\operatorname{im}(f)$ and kernel
+$\operatorname{ker}(f)$.
+</div>
+<p>
+All generators besides $g_1, g_2$ are derived by hashing domain-separation strings to
+the curve (nothing-up-my-sleeve):
 </p>
 <ul>
   <li>$G_p, H_p \in \mathbb{G}_1$ — Pedersen commitment basis for amounts,</li>
   <li>$G, H_1, H_2, H_3 \in \mathbb{G}_1$ — basis for the attribute commitment.</li>
 </ul>
-<p>Each e-cash note carries three attributes in $\mathbb{Z}_p$:</p>
+<p>Each e-cash note carries three attributes in $K$:</p>
 <table>
   <tr><th>Attribute</th><th>Meaning</th></tr>
-  <tr><td>$m_1$</td><td>the <em>amount</em> (a 64-bit integer lifted to $\mathbb{Z}_p$)</td></tr>
+  <tr><td>$m_1$</td><td>the <em>amount</em> (a 64-bit integer lifted to $K$)</td></tr>
   <tr><td>$m_2$</td><td>a uniformly random <em>serial secret</em> (basis of the nullifier)</td></tr>
   <tr><td>$m_3 = \mathsf{H}_s(\mathit{auth})$</td><td>an <em>authentication hash</em>, i.e. a spend condition fixed at issuance</td></tr>
 </table>
@@ -75,7 +98,7 @@ derived by hashing domain-separation strings to the curve (nothing-up-my-sleeve)
 <h2>2. Keys and the underlying signature</h2>
 <p>
 The <span class="role">issuer</span>'s secret key is a vector of four scalars
-$\mathsf{sk} = (x_0, x_1, x_2, x_3) \in \mathbb{Z}_p^4$ — one constant term plus one
+$\mathsf{sk} = (x_0, x_1, x_2, x_3) \in K^4$ — one constant term plus one
 scalar per attribute. The public key publishes each component in <em>both</em> source groups:
 </p>
 <p>
@@ -93,13 +116,13 @@ A PS signature on $(m_1, m_2, m_3)$ with base point $h \in \mathbb{G}_1$ is the 
 $$\sigma = \Bigl(x_0 + \textstyle\sum_{j=1}^{3} x_j m_j\Bigr)\, h,$$
 verified by the single pairing equation
 $$e\!\left(h,\; X_0 + \textstyle\sum_{j=1}^{3} m_j X_j\right) \;=\; e(\sigma,\; g_2).$$
-PS signatures are <em>re-randomizable</em>: for any $r \in \mathbb{Z}_p^\ast$,
-$(r\,h,\; r\,\sigma)$ is an equally valid, unlinkable signature on the same messages.
+PS signatures are <em>re-randomizable</em>: for any $\lambda \in K \setminus \{0\}$,
+$(\lambda\,h,\; \lambda\,\sigma)$ is an equally valid, unlinkable signature on the same messages.
 </div>
 
 <h2>3. Issuance (blind signing)</h2>
 <p>The <span class="role">user</span> samples randomness
-$r_p, r_m, r_1, r_2, r_3 \stackrel{\$}{\leftarrow} \mathbb{Z}_p$ and forms five group elements:</p>
+$r_p, r_m, r_1, r_2, r_3 \stackrel{\$}{\leftarrow} K$ and forms five group elements:</p>
 <p>
 $$\begin{aligned}
 \mathsf{pc} &= m_1\, G_p + r_p\, H_p
@@ -122,8 +145,8 @@ message vector, and the issuer can recompute $h$ itself from the public $c_m$.
 <h3>3.1 The issuance proof</h3>
 <p>
 The well-formedness of $(\mathsf{pc}, c_m, c_1, c_2, c_3)$ is exactly the statement that
-this tuple lies in the image of the group homomorphism
-$\varphi_h : \mathbb{Z}_p^8 \to \mathbb{G}_1^5$,
+this tuple lies in the image of the linear map
+$\varphi_h : K^8 \to \mathbb{G}_1^5$,
 $$\varphi_h(m_1, m_2, m_3, r_p, r_m, r_1, r_2, r_3) \;=\;
 \begin{pmatrix}
 m_1\, G_p + r_p\, H_p \\[2pt]
@@ -134,11 +157,11 @@ m_3\, h + r_3\, G
 \end{pmatrix}
 \;=\;
 \begin{pmatrix} \mathsf{pc} \\[2pt] c_m \\[2pt] c_1 \\[2pt] c_2 \\[2pt] c_3 \end{pmatrix},$$
-and the user proves knowledge of a preimage with a generalized Schnorr $\Sigma$-protocol,
+and the user proves knowledge of a preimage with the Σ-protocol of the appendix,
 made non-interactive by Fiat–Shamir (domain tag <code>FEDIMINT_ECASH_CHALLENGE_ISSUANCE</code>):
 </p>
 <p>
-$$\vec{\rho} \stackrel{\$}{\leftarrow} \mathbb{Z}_p^8, \qquad
+$$\vec{\rho} \stackrel{\$}{\leftarrow} K^8, \qquad
 \vec{R} = \varphi_h(\vec{\rho}), \qquad
 c = \mathsf{H}_s(\vec{Y} \,\|\, \vec{R}), \qquad
 \vec{s} = \vec{\rho} + c\,\vec{x},$$
@@ -170,8 +193,8 @@ and checks the result against the $X_j$ via the PS pairing equation.
 
 <h3>3.3 Re-randomization</h3>
 <p>
-Finally the user samples $r \stackrel{\$}{\leftarrow} \mathbb{Z}_p^\ast$ and stores
-$$(h', \sigma') = (r\,h,\; r\,\sigma).$$
+Finally the user samples $\lambda \stackrel{\$}{\leftarrow} K \setminus \{0\}$ and stores
+$$(h', \sigma') = (\lambda\,h,\; \lambda\,\sigma).$$
 The issuer saw $h$ during issuance but never sees $h'$ — under DDH in $\mathbb{G}_1$
 the shown pair is unlinkable to the issuance session.
 </p>
@@ -182,19 +205,19 @@ preimage data (so the verifier can recompute $m_3$), and two elements:</p>
 <p>
 $$P = m_1\, G_p + r_p'\, H_p \;\in \mathbb{G}_1
 \qquad\text{(fresh Pedersen commitment, new blinding } r_p'\text{)},$$
-$$K = m_1\, X_1 + m_2\, X_2 \;\in \mathbb{G}_2
+$$K' = m_1\, X_1 + m_2\, X_2 \;\in \mathbb{G}_2
 \qquad\text{(the hidden-attribute part of the verification equation)},$$
 </p>
 <p>
-together with a second Fiat–Shamir $\Sigma$-proof
+together with a second Fiat–Shamir Σ-proof
 (domain tag <code>FEDIMINT_ECASH_CHALLENGE_SPEND</code>) of knowledge of
-$(m_1, m_2, r_p')$ for the homomorphism
-$$\psi : \mathbb{Z}_p^3 \to \mathbb{G}_1 \times \mathbb{G}_2, \qquad
-\psi(m_1, m_2, r_p') = \bigl(\, m_1 G_p + r_p' H_p,\;\; m_1 X_1 + m_2 X_2 \,\bigr) = (P, K).$$
+$(m_1, m_2, r_p')$ for the linear map
+$$\psi : K^3 \to \mathbb{G}_1 \times \mathbb{G}_2, \qquad
+\psi(m_1, m_2, r_p') = \bigl(\, m_1 G_p + r_p' H_p,\;\; m_1 X_1 + m_2 X_2 \,\bigr) = (P, K').$$
 </p>
-<p>The <span class="role">verifier</span> accepts iff the $\Sigma$-proof verifies and</p>
+<p>The <span class="role">verifier</span> accepts iff the Σ-proof verifies and</p>
 <p>
-$$e\!\left(h',\; X_0 + K + m_3\, X_3\right) \;=\; e(\sigma',\; g_2).$$
+$$e\!\left(h',\; X_0 + K' + m_3\, X_3\right) \;=\; e(\sigma',\; g_2).$$
 </p>
 
 <h3>What each element achieves</h3>
@@ -206,9 +229,9 @@ $$e\!\left(h',\; X_0 + K + m_3\, X_3\right) \;=\; e(\sigma',\; g_2).$$
         commitments homomorphically ($\sum P_{\text{in}} = \sum P_{\text{out}}$).</td>
   </tr>
   <tr>
-    <td>$K$</td>
+    <td>$K'$</td>
     <td>The <strong>nullifier</strong>: deterministic in $(m_1, m_2)$, so double-spending
-        the same note reproduces the same $K$; the random $m_2$ makes $K$ unique per note
+        the same note reproduces the same $K'$; the random $m_2$ makes $K'$ unique per note
         and unlinkable to anything seen at issuance.</td>
   </tr>
   <tr>
@@ -227,7 +250,7 @@ $$e\!\left(h',\; X_0 + K + m_3\, X_3\right) \;=\; e(\sigma',\; g_2).$$
 <h2>5. Security properties (informal)</h2>
 <ul>
   <li><strong>Unforgeability</strong> — from the unforgeability of Pointcheval–Sanders
-      signatures (LRSW-style assumption) plus the soundness of the two $\Sigma$-proofs and
+      signatures (LRSW-style assumption) plus the soundness of the two Σ-proofs and
       the binding of the commitments; the hashed base $h = \mathsf{H}_{\mathbb{G}_1}(c_m)$
       prevents base-point malleability across issuances.</li>
   <li><strong>Blindness</strong> — the issuer sees only Pedersen-style commitments
@@ -236,14 +259,14 @@ $$e\!\left(h',\; X_0 + K + m_3\, X_3\right) \;=\; e(\sigma',\; g_2).$$
   <li><strong>Unlinkability</strong> — re-randomization of $(h, \sigma)$ and fresh
       commitment randomness $r_p'$ make the spend transcript independent of the issuance
       transcript (under DDH).</li>
-  <li><strong>Double-spend detection</strong> — equality of nullifiers $K$.</li>
+  <li><strong>Double-spend detection</strong> — equality of nullifiers $K'$.</li>
 </ul>
 
 <h2>6. The threshold construction</h2>
 <p>
 Nothing above requires a single issuer. The blinded signing operation
 $$\widetilde{\sigma} \;=\; x_0\, h + \sum_{j=1}^{3} x_j\, c_j$$
-is <em>$\mathbb{Z}_p$-linear in the secret key</em> $(x_0, \dots, x_3)$ — and any
+is <em>$K$-linear in the secret key</em> $(x_0, \dots, x_3) \in K^4$ — and any
 signature whose signing map is linear in the key can be thresholdized by Shamir
 secret sharing plus Lagrange interpolation <em>in the exponent</em>. This is exactly the
 standard construction for threshold BLS, where $\sigma = x \cdot \mathsf{H}(m)$ is
@@ -253,8 +276,8 @@ four-scalar key.
 
 <h3>6.1 Key sharing</h3>
 <p>
-Each $x_j$ is Shamir-shared: pick random polynomials $f_j \in \mathbb{Z}_p[X]$ of degree
-$t-1$ with $f_j(0) = x_j$, and give <span class="role">guardian</span>
+Each $x_j$ is Shamir-shared: pick random polynomials $f_j \in K[X]$ of degree
+at most $t-1$ with $f_j(0) = x_j$, and give <span class="role">guardian</span>
 $i \in \{1,\dots,n\}$ the key share
 $$\mathsf{sk}_i = \bigl(f_0(i),\, f_1(i),\, f_2(i),\, f_3(i)\bigr),$$
 with corresponding public key shares $Y_{i,j} = f_j(i)\, g_1$ and $X_{i,j} = f_j(i)\, g_2$.
@@ -273,9 +296,9 @@ $$\sigma = \sum_{i \in S} \lambda_i^S\, \sigma_i, \qquad
 \lambda_i^S = \prod_{\substack{j \in S \\ j \neq i}} \frac{j}{\,j - i\,}.$$
 This is just polynomial interpolation at $0$ carried out on group elements: since
 $\sigma_i = \bigl(f_0(i) + \sum_j f_j(i)\, m_j\bigr) h$ and the map
-$x \mapsto x\,h$ is linear, the Lagrange combination evaluates the polynomial
-$f_0 + \sum_j m_j f_j$ at $0$, yielding exactly the single-issuer signature
-$\sigma = \bigl(x_0 + \sum_j x_j m_j\bigr) h$ of §2.
+$K \to \mathbb{G}_1$, $\lambda \mapsto \lambda\,h$ is linear, the Lagrange combination
+evaluates the polynomial $f_0 + \sum_j m_j f_j$ at $0$, yielding exactly the
+single-issuer signature $\sigma = \bigl(x_0 + \sum_j x_j m_j\bigr) h$ of §2.
 </p>
 <p>
 Everything downstream — re-randomization, spending, verification — is identical to the
@@ -283,26 +306,28 @@ single-issuer scheme and verifies against the aggregate key. Fewer than $t$ guar
 learn nothing about $\mathsf{sk}$ and cannot produce a valid share combination.
 </p>
 
-<h2>Appendix: Σ-protocols for linear homomorphisms</h2>
+<h2>Appendix: Σ-protocols for linear maps</h2>
 <p>
 Both proofs in this scheme are instances of one generic protocol: a proof of knowledge
-of a preimage under a group homomorphism. Let
-$$\varphi : \mathbb{Z}_p^n \to \mathbb{H}, \qquad
-\varphi(a\,\vec{x} + b\,\vec{y}) = a\,\varphi(\vec{x}) + b\,\varphi(\vec{y}),$$
-be any $\mathbb{Z}_p$-linear map into a group $\mathbb{H}$ of prime order $p$ —
-$\mathbb{H}$ may itself be a product such as $\mathbb{G}_1^5$ or
-$\mathbb{G}_1 \times \mathbb{G}_2$, since a tuple of homomorphisms is again a
-homomorphism. The public statement is $Y \in \mathbb{H}$; the
-<span class="role">prover</span> knows a witness $\vec{x} \in \mathbb{Z}_p^n$ with
-$\varphi(\vec{x}) = Y$.
+of a preimage under a linear map. Let $V$ and $W$ be finite-dimensional $K$-vector
+spaces — in our instantiations $V = K^n$ and $W$ is a product of pairing groups,
+each a one-dimensional $K$-vector space — and let
+$$\varphi : V \to W, \qquad
+\varphi(\lambda\,v + \mu\,w) = \lambda\,\varphi(v) + \mu\,\varphi(w)
+\quad \text{for all } \lambda, \mu \in K,\; v, w \in V,$$
+be a linear map. The public statement is an element $Y \in \operatorname{im}(\varphi)$;
+the <span class="role">prover</span> knows a witness $\vec{x} \in V$ with
+$\varphi(\vec{x}) = Y$. Note that the full set of witnesses is the preimage
+$$\varphi^{-1}(\{Y\}) = \vec{x} + \operatorname{ker}(\varphi),$$
+an affine subspace of $V$ — just like the solution set of a linear system.
 </p>
 
 <h3>A.1 The interactive protocol</h3>
 <p>
 $$\begin{aligned}
-&\textbf{commit:} && \vec{\rho} \stackrel{\$}{\leftarrow} \mathbb{Z}_p^n, \quad
+&\textbf{commit:} && \vec{\rho} \stackrel{\$}{\leftarrow} V, \quad
   R = \varphi(\vec{\rho}), && \text{prover} \to \text{verifier:}\; R \\[2pt]
-&\textbf{challenge:} && c \stackrel{\$}{\leftarrow} \mathbb{Z}_p,
+&\textbf{challenge:} && c \stackrel{\$}{\leftarrow} K,
   && \text{verifier} \to \text{prover:}\; c \\[2pt]
 &\textbf{respond:} && \vec{s} = \vec{\rho} + c\,\vec{x},
   && \text{prover} \to \text{verifier:}\; \vec{s} \\[2pt]
@@ -316,14 +341,16 @@ $$\begin{aligned}
   <li><strong>Special soundness.</strong> Two accepting transcripts with the same
       commitment but distinct challenges, $(R, c, \vec{s})$ and $(R, c', \vec{s}\,')$,
       yield $\varphi(\vec{s} - \vec{s}\,') = (c - c')\,Y$, so
-      $$\vec{x}^\ast = (c - c')^{-1} (\vec{s} - \vec{s}\,')$$
+      $$\vec{x}^\ast = (c - c')^{-1} (\vec{s} - \vec{s}\,') \;\in\; \varphi^{-1}(\{Y\})$$
       is a valid witness — an extractor recovers a preimage from any prover that can
       answer two challenges, so the proof is a proof of <em>knowledge</em>.</li>
   <li><strong>Honest-verifier zero knowledge.</strong> A simulator without the witness
-      samples $\vec{s} \stackrel{\$}{\leftarrow} \mathbb{Z}_p^n$ and
-      $c \stackrel{\$}{\leftarrow} \mathbb{Z}_p$ first, then sets
+      samples $\vec{s} \stackrel{\$}{\leftarrow} V$ and
+      $c \stackrel{\$}{\leftarrow} K$ first, then sets
       $R = \varphi(\vec{s}) - c\,Y$. The resulting transcript is distributed identically
-      to a real one, so the verifier learns nothing beyond the truth of the statement.</li>
+      to a real one, so the verifier learns nothing beyond $Y \in \operatorname{im}(\varphi)$
+      — in particular, since $\vec{s}$ is uniform on $V$, nothing about <em>which</em>
+      element of the witness space $\vec{x} + \operatorname{ker}(\varphi)$ the prover holds.</li>
 </ul>
 
 <h3>A.2 The Fiat–Shamir transform</h3>
@@ -335,21 +362,21 @@ $$c = \mathsf{H}_s\bigl(\mathsf{tag} \,\|\, Y \,\|\, R\bigr),$$
 where $\mathsf{tag}$ is a domain-separation string unique to the statement type. The
 proof is the pair $(R, \vec{s})$, verified by recomputing $c$ and checking
 $\varphi(\vec{s}) = R + c\,Y$. Hashing $Y$ along with $R$ binds the proof to the
-statement; the domain tag prevents a proof for one homomorphism from being replayed
+statement; the domain tag prevents a proof for one linear map from being replayed
 against another.
 </p>
 
 <h3>A.3 Instances used in this scheme</h3>
 <table>
-  <tr><th>Proof</th><th>Homomorphism</th><th>Domain tag</th></tr>
+  <tr><th>Proof</th><th>Linear map</th><th>Domain tag</th></tr>
   <tr>
     <td>Issuance (§3.1)</td>
-    <td>$\varphi_h : \mathbb{Z}_p^8 \to \mathbb{G}_1^5$</td>
+    <td>$\varphi_h : K^8 \to \mathbb{G}_1^5$</td>
     <td><code>FEDIMINT_ECASH_CHALLENGE_ISSUANCE</code></td>
   </tr>
   <tr>
     <td>Spend (§4)</td>
-    <td>$\psi : \mathbb{Z}_p^3 \to \mathbb{G}_1 \times \mathbb{G}_2$</td>
+    <td>$\psi : K^3 \to \mathbb{G}_1 \times \mathbb{G}_2$</td>
     <td><code>FEDIMINT_ECASH_CHALLENGE_SPEND</code></td>
   </tr>
 </table>
@@ -369,7 +396,8 @@ but non-interoperable.
 <footer>
 Generated from <code>ecash-ng-crypto</code> — sources: <code>lib.rs</code>,
 <code>issuance.rs</code>, <code>spend.rs</code>, <code>generators.rs</code>,
-<code>hash.rs</code>.
+<code>hash.rs</code>. Linear-algebra notation follows Liesen &amp; Mehrmann,
+<em>Linear Algebra</em>, Springer Undergraduate Mathematics Series.
 </footer>
 
 </body>
