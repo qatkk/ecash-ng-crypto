@@ -34,23 +34,6 @@ fn issuance_verify(bencher: divan::Bencher) {
     bencher.bench(|| request.verify());
 }
 
-#[divan::bench]
-fn bulletproofs_prove(bencher: divan::Bencher) {
-    let blinding = Scalar::random(&mut thread_rng());
-
-    bencher.bench(|| ecash_ng_crypto::rp::prove(1000, blinding));
-}
-
-#[divan::bench]
-fn bulletproofs_verify(bencher: divan::Bencher) {
-    let blinding = Scalar::random(&mut thread_rng());
-
-    let proof = ecash_ng_crypto::rp::prove(1000, blinding);
-    let commitment = ecash_ng_crypto::pedersen_commit(1000, blinding);
-
-    bencher.bench(|| ecash_ng_crypto::rp::verify(commitment, &proof));
-}
-
 fn find_tag_single_bit(seed: [u8; 32]) -> [u8; 16] {
     loop {
         let tag = thread_rng().gen::<[u8; 16]>();

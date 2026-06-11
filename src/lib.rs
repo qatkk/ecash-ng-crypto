@@ -3,7 +3,6 @@
 mod generators;
 mod hash;
 mod issuance;
-pub mod rp;
 mod spend;
 
 use std::array;
@@ -355,10 +354,6 @@ mod tests {
             issuance.amount_commitment(),
             crate::pedersen_commit(1000, blinding_sk)
         );
-
-        let proof = crate::rp::prove(1000, blinding_sk);
-
-        assert!(crate::rp::verify(issuance.amount_commitment(), &proof));
 
         let (apk, pks, sks) = dealer_keygen(5, 7);
 
