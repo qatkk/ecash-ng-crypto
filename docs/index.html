@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Threshold Blind Credential Scheme — ecash-ng-crypto</title>
+<script>
+MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 6rem;
+    color: #1c1e21;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.9rem; border-bottom: 2px solid #e0e0e0; padding-bottom: .4rem; }
+  h2 { font-size: 1.4rem; margin-top: 2.4rem; border-bottom: 1px solid #ececec; padding-bottom: .3rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.8rem; }
+  code { background: #f4f4f6; padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+  .box {
+    background: #f8f9fb;
+    border: 1px solid #e3e6ea;
+    border-left: 4px solid #4a6fa5;
+    border-radius: 6px;
+    padding: .8rem 1.2rem;
+    margin: 1.2rem 0;
+  }
+  .warn { border-left-color: #c0883a; background: #fbf7f0; }
+  .role { color: #4a6fa5; font-weight: 600; }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  td, th { border: 1px solid #ddd; padding: .4rem .8rem; text-align: left; }
+  th { background: #f4f4f6; }
+  footer { margin-top: 3rem; color: #888; font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<h1>A Threshold Blind Credential Scheme for E-Cash</h1>
+<p>
+This page describes the cryptographic scheme implemented in <code>ecash-ng-crypto</code>:
+a <strong>Coconut-style threshold blind credential</strong> built from
+<strong>Pointcheval–Sanders (PS) signatures</strong> over the pairing-friendly curve BLS12-381.
+A federation of guardians blindly issues credentials over three hidden attributes;
+the user later shows the credential in zero knowledge, unlinkably to issuance.
+</p>
+
+<h2>1. Setting and notation</h2>
+<p>
+Let $\mathbb{G}_1, \mathbb{G}_2, \mathbb{G}_T$ be the BLS12-381 pairing groups of prime
+order $p$, with bilinear map $e : \mathbb{G}_1 \times \mathbb{G}_2 \to \mathbb{G}_T$ and
+fixed generator $g_2 \in \mathbb{G}_2$. All other generators are derived by hashing
+domain-separation strings to the curve (nothing-up-my-sleeve):
+</p>
+<ul>
+  <li>$G_p, H_p \in \mathbb{G}_1$ — Pedersen commitment basis for amounts,</li>
+  <li>$G, H_1, H_2, H_3 \in \mathbb{G}_1$ — basis for the attribute commitment.</li>
+</ul>
+<p>Each e-cash note carries three attributes in $\mathbb{Z}_p$:</p>
+<table>
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td>$m_1$</td><td>the <em>amount</em> (a 64-bit integer lifted to $\mathbb{Z}_p$)</td></tr>
+  <tr><td>$m_2$</td><td>a uniformly random <em>serial secret</em> (basis of the nullifier)</td></tr>
+  <tr><td>$m_3 = \mathsf{H}_s(\mathit{auth})$</td><td>an <em>authentication hash</em>, i.e. a spend condition fixed at issuance</td></tr>
+</table>
+
+<h2>2. Keys and threshold structure</h2>
+<p>
+The federation secret key is a vector of four scalars
+$\mathsf{sk} = (x_0, x_1, x_2, x_3) \in \mathbb{Z}_p^4$ — one constant term plus one
+scalar per attribute. The public key publishes each component in <em>both</em> source groups:
+</p>
+<p>
+$$\mathsf{pk} = \bigl(\, \{Y_j = x_j\, g_1\}_{j=0}^{3} \subset \mathbb{G}_1,\quad
+\{X_j = x_j\, g_2\}_{j=0}^{3} \subset \mathbb{G}_2 \,\bigr)$$
+</p>
+<p>
+The $\mathbb{G}_1$ copies $Y_j$ are used by the client for <em>unblinding</em>;
+the $\mathbb{G}_2$ copies $X_j$ are used in pairing verification and in the spend proof.
+</p>
+<p>
+Each $x_j$ is Shamir-shared: pick random polynomials $f_j \in \mathbb{Z}_p[X]$ of degree
+$t-1$ with $f_j(0) = x_j$, and give guardian $i \in \{1,\dots,n\}$ the share
+$\mathsf{sk}_i = (f_0(i), f_1(i), f_2(i), f_3(i))$. Any $t$ guardians can jointly sign;
+signature shares are combined by Lagrange interpolation <em>in the exponent</em>:
+$$\sigma = \sum_{i \in S} \lambda_i^S\, \sigma_i, \qquad
+\lambda_i^S = \prod_{\substack{j \in S \\ j \neq i}} \frac{j}{\,j - i\,}, \qquad |S| = t.$$
+</p>
+
+<div class="box">
+<strong>Underlying primitive — Pointcheval–Sanders.</strong>
+A PS signature on $(m_1, m_2, m_3)$ with base point $h \in \mathbb{G}_1$ is the pair $(h, \sigma)$ where
+$$\sigma = \Bigl(x_0 + \textstyle\sum_{j=1}^{3} x_j m_j\Bigr)\, h,$$
+verified by the single pairing equation
+$$e\!\left(h,\; X_0 + \textstyle\sum_{j=1}^{3} m_j X_j\right) \;=\; e(\sigma,\; g_2).$$
+PS signatures are <em>re-randomizable</em>: for any $r \in \mathbb{Z}_p^\ast$,
+$(r\,h,\; r\,\sigma)$ is an equally valid, unlinkable signature on the same messages.
+</div>
+
+<h2>3. Issuance (blind signing)</h2>
+<p>The <span class="role">user</span> samples randomness
+$r_p, r_m, r_1, r_2, r_3 \stackrel{\$}{\leftarrow} \mathbb{Z}_p$ and forms five group elements:</p>
+<p>
+$$\begin{aligned}
+\mathsf{pc} &= m_1\, G_p + r_p\, H_p
+  && \text{(Pedersen commitment to the amount)} \\[2pt]
+c_m &= m_1 H_1 + m_2 H_2 + m_3 H_3 + r_m\, G
+  && \text{(commitment to all attributes)} \\[2pt]
+h &= \mathsf{H}_{\mathbb{G}_1}(c_m)
+  && \text{(derived signature base)} \\[2pt]
+c_j &= m_j\, h + r_j\, G, \quad j \in \{1,2,3\}
+  && \text{(blinded attributes)}
+\end{aligned}$$
+</p>
+<div class="box">
+<strong>Why $h = \mathsf{H}_{\mathbb{G}_1}(c_m)$?</strong>
+Deriving the base point from a binding commitment to the attributes is the Coconut trick:
+neither party can choose $h$ adversarially, every issuance gets a fresh base bound to the
+message vector, and the guardians can recompute $h$ themselves from the public $c_m$.
+</div>
+
+<h3>3.1 The issuance proof</h3>
+<p>
+The well-formedness of $(\mathsf{pc}, c_m, c_1, c_2, c_3)$ is exactly the statement that
+this tuple lies in the image of the group homomorphism
+$$\varphi_h : \mathbb{Z}_p^8 \to \mathbb{G}_1^5, \qquad
+\varphi_h(m_1, m_2, m_3, r_p, r_m, r_1, r_2, r_3) = (\mathsf{pc},\, c_m,\, c_1,\, c_2,\, c_3),$$
+and the user proves knowledge of a preimage with a generalized Schnorr $\Sigma$-protocol,
+made non-interactive by Fiat–Shamir (domain tag <code>FEDIMINT_ECASH_CHALLENGE_ISSUANCE</code>):
+</p>
+<p>
+$$\vec{\rho} \stackrel{\$}{\leftarrow} \mathbb{Z}_p^8, \qquad
+\vec{R} = \varphi_h(\vec{\rho}), \qquad
+c = \mathsf{H}_s(\vec{Y} \,\|\, \vec{R}), \qquad
+\vec{s} = \vec{\rho} + c\,\vec{x},$$
+$$\text{verify:}\quad \varphi_h(\vec{s}) \;\stackrel{?}{=}\; c\,\vec{Y} + \vec{R},
+\qquad \text{where } \vec{Y} = (\mathsf{pc}, c_m, c_1, c_2, c_3).$$
+</p>
+<p>
+Crucially, the proof ties the <em>same</em> $m_1$ into both $\mathsf{pc}$ and $c_1$: the
+amount inside the Pedersen commitment is the amount being signed. The guardians never
+learn $m_1, m_2, m_3$. (A range proof over $\mathsf{pc}$ can be attached externally by
+the transaction layer.)
+</p>
+
+<h3>3.2 Blind signing, unblinding, aggregation</h3>
+<p>Each <span class="role">guardian</span> $i$ verifies the proof, recomputes
+$h = \mathsf{H}_{\mathbb{G}_1}(c_m)$, and returns the blinded share</p>
+<p>
+$$\widetilde{\sigma}_i \;=\; f_0(i)\, h + \sum_{j=1}^{3} f_j(i)\; c_j
+\;=\; \underbrace{\Bigl(f_0(i) + \textstyle\sum_j f_j(i)\, m_j\Bigr) h}_{\text{PS share } \sigma_i}
+\;+\; \underbrace{\sum_{j=1}^{3} r_j \,\bigl(f_j(i)\, g_1\bigr)}_{\text{blinding term}}.$$
+</p>
+<p>
+Because the blinding term is a known linear combination of the guardian's public key
+components in $\mathbb{G}_1$, the <span class="role">user</span> removes it using public
+information only:
+$$\sigma_i = \widetilde{\sigma}_i - \sum_{j=1}^{3} r_j\, Y_{i,j}.$$
+Each unblinded share is checked against the guardian's $X_{i,j}$ via the PS pairing
+equation; any $t$ valid shares are Lagrange-combined into the federation signature
+$\sigma$ and checked against the aggregate key.
+</p>
+
+<h3>3.3 Re-randomization</h3>
+<p>
+Finally the user samples $r \stackrel{\$}{\leftarrow} \mathbb{Z}_p^\ast$ and stores
+$$(h', \sigma') = (r\,h,\; r\,\sigma).$$
+The guardians saw $h$ during issuance but never see $h'$ — under DDH in $\mathbb{G}_1$
+the shown pair is unlinkable to the issuance session.
+</p>
+
+<h2>4. Spend (showing the credential)</h2>
+<p>To spend, the <span class="role">user</span> reveals $(h', \sigma')$, the authentication
+preimage data (so the verifier can recompute $m_3$), and two elements:</p>
+<p>
+$$P = m_1\, G_p + r_p'\, H_p \;\in \mathbb{G}_1
+\qquad\text{(fresh Pedersen commitment, new blinding } r_p'\text{)},$$
+$$K = m_1\, X_1 + m_2\, X_2 \;\in \mathbb{G}_2
+\qquad\text{(the hidden-attribute part of the verification equation)},$$
+</p>
+<p>
+together with a second Fiat–Shamir $\Sigma$-proof
+(domain tag <code>FEDIMINT_ECASH_CHALLENGE_SPEND</code>) of knowledge of
+$(m_1, m_2, r_p')$ for the homomorphism
+$$\psi : \mathbb{Z}_p^3 \to \mathbb{G}_1 \times \mathbb{G}_2, \qquad
+\psi(m_1, m_2, r_p') = \bigl(\, m_1 G_p + r_p' H_p,\;\; m_1 X_1 + m_2 X_2 \,\bigr) = (P, K).$$
+</p>
+<p>The <span class="role">verifier</span> accepts iff the $\Sigma$-proof verifies and</p>
+<p>
+$$e\!\left(h',\; X_0 + K + m_3\, X_3\right) \;=\; e(\sigma',\; g_2).$$
+</p>
+
+<h3>What each element achieves</h3>
+<table>
+  <tr><th>Element</th><th>Property</th></tr>
+  <tr>
+    <td>$P$</td>
+    <td>The amount never appears in the clear; the transaction layer can balance-check
+        commitments homomorphically ($\sum P_{\text{in}} = \sum P_{\text{out}}$).</td>
+  </tr>
+  <tr>
+    <td>$K$</td>
+    <td>The <strong>nullifier</strong>: deterministic in $(m_1, m_2)$, so double-spending
+        the same note reproduces the same $K$; the random $m_2$ makes $K$ unique per note
+        and unlinkable to anything seen at issuance.</td>
+  </tr>
+  <tr>
+    <td>$m_3$</td>
+    <td>The spend condition: it is baked into $\sigma$, so only a spender who can produce
+        the committed authentication data yields a verifying equation. Since the guardians
+        only ever saw $m_3$ blinded, revealing it now does not link the spend to the issuance.</td>
+  </tr>
+  <tr>
+    <td>$(h', \sigma')$</td>
+    <td>A re-randomized PS pair — fresh group elements every spend, unlinkable to the
+        issuance transcript.</td>
+  </tr>
+</table>
+
+<h2>5. Security properties (informal)</h2>
+<ul>
+  <li><strong>Unforgeability</strong> — from the unforgeability of Pointcheval–Sanders
+      signatures (LRSW-style assumption) plus the soundness of the two $\Sigma$-proofs and
+      the binding of the commitments; the hashed base $h = \mathsf{H}_{\mathbb{G}_1}(c_m)$
+      prevents base-point malleability across issuances.</li>
+  <li><strong>Blindness</strong> — the guardians see only Pedersen-style commitments
+      $(\mathsf{pc}, c_m, c_1, c_2, c_3)$, all perfectly or computationally hiding, plus
+      zero-knowledge proofs.</li>
+  <li><strong>Unlinkability</strong> — re-randomization of $(h, \sigma)$ and fresh
+      commitment randomness $r_p'$ make the spend transcript independent of the issuance
+      transcript (under DDH).</li>
+  <li><strong>Double-spend detection</strong> — equality of nullifiers $K$.</li>
+  <li><strong>Threshold trust</strong> — any $t$ of $n$ guardians issue; fewer than $t$
+      learn nothing about $\mathsf{sk}$ and cannot sign.</li>
+</ul>
+
+<div class="box warn">
+<strong>Implementation caveat (prototype).</strong>
+Hash-to-group is implemented by seeding a ChaCha RNG with SHA-256 rather than a
+standard <code>hash_to_curve</code> ciphersuite — fine for unknown-discrete-log generation,
+but non-interoperable.
+</div>
+
+<footer>
+Generated from <code>ecash-ng-crypto</code> — sources: <code>lib.rs</code>,
+<code>issuance.rs</code>, <code>spend.rs</code>, <code>generators.rs</code>,
+<code>hash.rs</code>.
+</footer>
+
+</body>
+</html>
